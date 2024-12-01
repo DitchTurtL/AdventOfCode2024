@@ -1,7 +1,18 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Jello, Day 1!");
+﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Running;
 
-var input = """
+Console.WriteLine("Jello, Day 1!");
+BenchmarkRunner.Run<Runner>();
+
+public class Runner
+{
+    [Benchmark]
+    /// <summary>
+    /// Benchmark: Mean = 419.6 us, Error = 1.08 us, StdDev = 1.01 us
+    /// </summary>
+    public void Day01First()
+    {
+        string input = """
     88159   51481
     66127   31794
     71500   84893
@@ -1003,34 +1014,36 @@ var input = """
     21910   29845
     38235   16463
     """;
-var pairs = input.Split(Environment.NewLine, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var pairs = input.Split(Environment.NewLine, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
-var list1 = new List<int>();
-var list2 = new List<int>();
+        var list1 = new List<int>();
+        var list2 = new List<int>();
 
-foreach (var pair in pairs)
-{
-    var numbers = pair.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-    list1.Add(int.Parse(numbers[0]));
-    list2.Add(int.Parse(numbers[1]));
+        foreach (var pair in pairs)
+        {
+            var numbers = pair.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            list1.Add(int.Parse(numbers[0]));
+            list2.Add(int.Parse(numbers[1]));
+        }
+
+        var sortedList1 = list1.OrderBy(x => x).ToList();
+        var sortedList2 = list2.OrderBy(x => x).ToList();
+
+        var result = 0;
+        for (int i = 0; i < sortedList1.Count; i++)
+        {
+            result += Math.Abs(sortedList1[i] - sortedList2[i]);
+        }
+        Console.WriteLine($"First result: {result}");
+
+
+        var result2 = 0;
+        foreach (var i in list1)
+        {
+            result2 += (i * list2.Count(m => m == i));
+        }
+        Console.WriteLine($"Second result: {result2}");
+    }
 }
-
-var sortedList1 = list1.OrderBy(x => x).ToList();
-var sortedList2 = list2.OrderBy(x => x).ToList();
-
-var result = 0;
-for (int i = 0; i < sortedList1.Count; i++)
-{
-    result += Math.Abs(sortedList1[i] - sortedList2[i]);
-}
-Console.WriteLine($"First result: {result}");
-
-
-var result2 = 0;
-foreach (var i in list1)
-{
-    result2 += (i * list2.Count(m => m == i));
-}
-Console.WriteLine($"Second result: {result2}");
 
 
