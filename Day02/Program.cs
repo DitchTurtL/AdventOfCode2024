@@ -1005,19 +1005,14 @@ var input = """
 var lines = input.Split("\n", StringSplitOptions.RemoveEmptyEntries);
 var ints = lines.Select(l => l.Split(" ", StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray()).ToArray();
 
-var count = 0;
+int countOne = 0, countTwo = 0;
 foreach (var a in ints)
 {
-    count += IsSafe(a) ? 1 : 0;
+    countOne += IsSafe(a) ? 1 : 0;
+    countTwo += IsSafeTwo(a) ? 1 : 0;
 }
-Console.WriteLine($"First Result: {count}");
-
-count = 0;
-foreach (var a in ints)
-{
-    count += IsSafeTwo(a) ? 1 : 0;
-}
-Console.WriteLine($"Second Result: {count}");
+Console.WriteLine($"First Result: {countOne}");
+Console.WriteLine($"Second Result: {countTwo}");
 
 bool IsSafe(int[] ints)
 {
@@ -1049,7 +1044,6 @@ bool IsSafe(int[] ints)
     }
     return true;
 }
-
 
 bool IsSafeTwo(int[] ints)
 {
