@@ -42,6 +42,7 @@ while (cursor > -1 && cursor <= input.Length)
 }
 Console.WriteLine($"Result 1: {result}");
 
+input = "...";
 result = 0;
 cursor = 0;
 while (cursor > -1 && cursor <= input.Length)
@@ -50,24 +51,20 @@ while (cursor > -1 && cursor <= input.Length)
         cursor += 5;
 
     cursor = input.IndexOf("mul(", cursor);
-    if (cursor == -1) break;
+    if (cursor == -1) 
+        break;
 
     var endCursor = input.IndexOf(")", cursor);
     var cursorCheck = input.IndexOf("mul(", cursor + 4);
     if (cursorCheck < endCursor && cursorCheck > -1)
-    {
         continue;
-    }
 
     var clip = input.Substring(cursor + 4, endCursor - cursor - 4);
-
     var parts = clip.Split(",");
     if (parts[0].Length > 3 || parts[1].Length > 3)
-    {
         continue;
-    }
 
-    int first = 0, second = 0;
+    int first, second;
     if (int.TryParse(parts[0], out first) && int.TryParse(parts[1], out second))
     {
         var doCursor = input.LastIndexOf("do()", cursor);
