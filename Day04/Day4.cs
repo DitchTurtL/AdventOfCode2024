@@ -1,20 +1,13 @@
 ﻿using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Running;
-using Day04;
-using System.Drawing;
-using System.Numerics;
-using System.Text;
-
-Console.WriteLine("Jello, Day 4!");
 
 
-BenchmarkRunner.Run<Runner>();
-//BenchmarkRunner.Run<Day4>();
-//BenchmarkRunner.Run<AOC.Day4>();
-
-public class Runner
+namespace Day04
 {
-    string input = """
+
+    public class Day4
+    {
+
+        static string input = """
     SAXXAXMMSSSSSXMXMAMXSXMAMAMXXXAMXAXXMXMAXSXMMAMXXXMSSSSSMSSSSSSMSSMMXSAMMMMXSAMXSMMMSASASMXMASMMXSSMXSAMXSAMXMMXXXAMAMXMASXSSMSASXMXSMMMMXXM
     MASXMSMAXAAAMMMAMAMSAMSXSAMSMSMMXMSSMMSAAXASAMSAMXAAAMAMXAASAASAAAASMMASMAAAMXSXAMAASXSASXMSXMASAXAAAAASAXAXAXMMSXMASMMMMSAMXAMMXASXXAAMMMSM
     MAMAAAMXMMMMMAMAXASAMXAAMXAXAAXMAMXAAAMMXMAMAXSAAAMMSMAMMMXMMMMMMMMMAAAMMMMSSXXAMMMMXMMAMXAXASMMMSMMMSSMXSMSMSMAAAMAMAAMAMXMMXMASMMMSSMMSAAX
@@ -156,81 +149,245 @@ public class Runner
     MAXAXAAAAAAMAMAXXAXAAMMAMXAAMXSXXMASAAAAASAMSAMAAAXMAXMAXAMAXASAAAMSASMAAAAAASXMAAAMXMAXSAMXSSMSASMSMMSAMMMMMSXAAAXAAAASMSSXAASAMXMMSMMSMASA
     AMMXMSMMMSMMSSXMSMMMSSMAMMSXMASMSMSMMMSMMMXAMSMSMSXMXMSAMXMXMXMSMSXMASMMMMMMXMASMXSAMXXMSAMXXMMSAMXAMXMASXSSXXXSMSSMMMMXAMXMMMSXMXXMXMSMMXSX
     """;
-    int ySize, xSize;
-    char[,] xmap;
+        static char[] XMAS = new char[] { 'X', 'M', 'A', 'S' };
 
-    [Benchmark]
-    public void Start1()
-    {
-
-        var lines = input.Split("\n", StringSplitOptions.RemoveEmptyEntries);
-        ySize = lines.Length;
-        xSize = lines[0].Length - 1;
-
-        xmap = new char[xSize, ySize];
-
-        for (int y = 0; y < ySize; y++)
+        public struct XmasRange
         {
-            for (int x = 0; x < xSize; x++)
+            public Position Start;
+            public Position End;
+
+            public XmasRange(Position start, Position end)
             {
-                xmap[x, y] = lines[y][x];
+                Start = start;
+                End = end;
+            }
+
+            public override int GetHashCode()
+            {
+                return (Start.X ^ End.X) << 8 | (Start.Y ^ End.Y);
             }
         }
 
-        List<Point[]> patterns = [
-            new [] { new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0) }, // Horizontal
-            new [] { new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(0, 3) }, // Vertical
-            new [] { new Point(0, 0), new Point(1, 1), new Point(2, 2), new Point(3, 3) }, // Diagonal Right
-            new [] { new Point(0, 0), new Point(-1, 1), new Point(-2, 2), new Point(-3, 3) }, // Diagonal Left
-        ];
-
-        var count = 0;
-        foreach (var pattern in patterns)
+        public struct Position
         {
-            for (var x = 0; x < xSize; x++)
+            public int X; // I wrote this
+            public int Y; // Copilot wrote the rest
+
+            public Position(int x, int y)
             {
-                for (var y = 0; y < ySize; y++)
+                X = x;
+                Y = y;
+            }
+
+            public override string ToString()
+            {
+                return $"({X}, {Y})";
+            }
+
+            public readonly Position Up => new(X, Y - 1);
+            public readonly Position Down => new(X, Y + 1);
+            public readonly Position Left => new(X - 1, Y);
+            public readonly Position Right => new(X + 1, Y);
+            public readonly Position UpLeft => new(X - 1, Y - 1);
+            public readonly Position UpRight => new(X + 1, Y - 1);
+            public readonly Position DownLeft => new(X - 1, Y + 1);
+            public readonly Position DownRight => new(X + 1, Y + 1);
+
+            public override int GetHashCode()
+            {
+                return (Y << 8) | X; // Except this, I typed "Y <<" and Copilot wrote the rest
+            }
+        }
+
+        public struct Direction
+        {
+            public int X; // I wrote this
+            public int Y; // Copilot wrote the rest
+            public Direction(int x, int y)
+            {
+                X = x; Y = y;
+            }
+
+            public static Direction Up => new(0, -1);
+            public static Direction Down => new(0, 1);
+            public static Direction Left => new(-1, 0);
+            public static Direction Right => new(1, 0);
+            public static Direction UpLeft => new(-1, -1);
+            public static Direction UpRight => new(1, -1);
+            public static Direction DownLeft => new(-1, 1);
+            public static Direction DownRight => new(1, 1);
+
+            public static Direction[] AllDirections = new Direction[] { Up, Down, Left, Right, UpLeft, UpRight, DownLeft, DownRight };
+
+            public static Position operator +(Position pos, Direction dir)
+            {
+                return new Position(pos.X + dir.X, pos.Y + dir.Y);
+            }
+
+            public static Position operator -(Position pos, Direction dir)
+            {
+                return new Position(pos.X - dir.X, pos.Y - dir.Y);
+            }
+
+            public static Direction operator -(Direction dir)
+            {
+                return new Direction(-dir.X, -dir.Y);
+            }
+
+            public static bool operator ==(Direction left, Direction right)
+            {
+                return left.X == right.X && left.Y == right.Y;
+            }
+
+            public static bool operator !=(Direction left, Direction right)
+            {
+                return left.X != right.X || left.Y != right.Y;
+            }
+        }
+
+        public class SearchTable
+        {
+            public char[,] Table { get; }
+            public int Width => Table.GetLength(0);
+            public int Height => Table.GetLength(1);
+
+            public HashSet<XmasRange> FoundRanges = new(4096);
+
+            public SearchTable(char[,] table)
+            {
+                Table = table;
+            }
+            public bool InBounds(Position pos)
+            {
+                return pos.X >= 0 && pos.X < Width && pos.Y >= 0 && pos.Y < Height;
+            }
+            public char this[Position pos]
+            {
+                get => Table[pos.X, pos.Y];
+                set => Table[pos.X, pos.Y] = value;
+            }
+
+            public IEnumerable<Position> Positions()
+            {
+                for (int x = 0; x < Width; x++)
                 {
-                    var check = GetCheckString(x, y, pattern);
-                    if (check == "XMAS" || check == "SAMX")
-                        count++;
+                    for (int y = 0; y < Height; y++)
+                    {
+                        yield return new Position(x, y);
+                    }
+                }
+            }
+
+            public bool MarkFound(Position start, Position end)
+            {
+                var range = new XmasRange(start, end);
+                if (FoundRanges.Contains(range))
+                {
+                    return false;
+                }
+                FoundRanges.Add(range);
+                return true;
+            }
+        }
+
+        public static bool CheckX_MAS(SearchTable st, Position pos)
+        {
+            if (!st.InBounds(pos.UpLeft) ||
+                !st.InBounds(pos.DownRight) ||
+                !st.InBounds(pos.UpRight) ||
+                !st.InBounds(pos.DownLeft))
+            {
+                return false;
+            }
+
+            char upLeft = st[pos.UpLeft];
+            char upRight = st[pos.UpRight];
+            char downLeft = st[pos.DownLeft];
+            char downRight = st[pos.DownRight];
+
+            bool cross1 = (upLeft == 'M' && downRight == 'S') || (upLeft == 'S' && downRight == 'M');
+            bool cross2 = (upRight == 'M' && downLeft == 'S') || (upRight == 'S' && downLeft == 'M');
+
+            return cross1 && cross2;
+        }
+
+        public static bool CheckXmas(SearchTable st, Position start, Position pos, Direction direction, int depth = 0)
+        {
+            if (depth == XMAS.Length)
+            {
+                return st.MarkFound(start, pos);
+            }
+            if (!st.InBounds(pos))
+            {
+                return false;
+            }
+            if (st[pos] != XMAS[depth])
+            {
+                return false;
+            }
+            return CheckXmas(st, start, pos + direction, direction, depth + 1);
+        }
+
+        static Day4()
+        {
+            lines = input.Split("\n", StringSplitOptions.RemoveEmptyEntries);
+
+        }
+
+        static string[] lines;
+        static SearchTable st;
+
+
+        [Benchmark]
+        public void Part1()
+        {
+            int count = 0;
+            st = new SearchTable(StringArrayToCharArray(lines));
+
+            foreach (var pos in st.Positions())
+            {
+                if (st[pos] == 'X')
+                {
+                    foreach (var dir in Day4.Direction.AllDirections)
+                    {
+                        if (Day4.CheckXmas(st, pos, pos, dir))
+                        {
+                            count++;
+                        }
+                    }
                 }
             }
         }
-        Console.WriteLine($"Result 1: {count}");
-    }
 
-    [Benchmark]
-    public void Start2()
-    {
-        // Part 2
-        var xPattern = new[] { new Point(0, 0), new Point(2, 0), new Point(1, 1), new Point(0, 2), new Point(2, 2) }; // X-Pattern..
-        var wordList = new[] { "MSAMS", "SSAMM", "MMASS", "SMASM" };
-        var count2 = 0;
-        for (var x = 0; x < xSize; x++)
+        [Benchmark]
+        public void Part2()
         {
-            for (var y = 0; y < ySize; y++)
+            int count = 0;
+            st = new SearchTable(StringArrayToCharArray(lines));
+
+            foreach (var pos in st.Positions())
             {
-                var check = GetCheckString(x, y, xPattern);
-                if (wordList.Contains(check))
-                    count2++;
+                if (st[pos] == 'A')
+                {
+                    if (Day4.CheckX_MAS(st, pos))
+                    {
+                        count++;
+                    }
+                }
             }
         }
-        Console.WriteLine($"Result 2: {count2}");
-    }
 
-    string GetCheckString(int x, int y, Point[] pattern)
-    {
-        var check = "";
-        for (var i = 0; i < pattern.Length; i++)
+        public static char[,] StringArrayToCharArray(string[] input)
         {
-            var xPos = x + pattern[i].X;
-            var yPos = y + pattern[i].Y;
-            if (xPos < 0 || xPos >= xSize || yPos < 0 || yPos >= ySize)
-                return "";
-            check += xmap[xPos, yPos];
+            char[,] arr = new char[input.Length, input[0].Length];
+            for (int i = 0; i < input.Length - 1; i++)
+            {
+                for (int j = 0; j < input[0].Length; j++)
+                {
+                    arr[i, j] = input[i][j];
+                }
+            }
+            return arr;
         }
-        return check;
     }
-
 }
